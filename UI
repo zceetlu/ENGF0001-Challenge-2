@@ -1,0 +1,46 @@
+import processing.serial.*;
+Serial myPort; // The serial port
+        int xPos = 1; // horizontal position of the graph
+        float yPos = 0; // vertical position of the graph
+        float last_yPos = 0; // last y coordinate
+        float inByte = 0; // reading from the serial port
+        void setup () {
+// set the window size:
+        size(400, 400);
+// List all the available serial ports
+        println(Serial.list());
+// Open whatever port is the one you’re using for the Launchpad.
+        myPort = new Serial(this, Serial.list()[1], 9600);
+// don’t generate a serialEvent() unless you get a newline character:
+        myPort.bufferUntil(‘\n’);
+// set inital background:
+        background(0);
+        }
+        void draw () {
+// draw the line:
+        stroke(255,0,0); // red
+        strokeWeight(7);
+        line(xPos, last_yPos, xPos, yPos);
+        last_yPos = yPos;
+// at the edge of the screen, go back to the beginning:
+        if (xPos >= width) {
+        xPos = 0;
+        background(0);
+        }
+        else {
+// increment the horizontal position:
+        xPos++;
+        }
+        }
+        void serialEvent (Serial myPort) {
+// get the ASCII string:
+        String inString = myPort.readStringUntil(‘\n’);
+        if (inString != null) {
+// trim off any whitespace:
+        inString = trim(inString);
+// convert to an int and map to the screen height:
+        float inByte = float(inString);
+        yPos = map(inByte, 0, 1023, 0, height);
+        println("original val., mapped val.: ", inByte, yPos);
+        }
+        }
