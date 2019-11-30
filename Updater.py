@@ -87,7 +87,8 @@ class UpdaterUI(tk.Frame):
         self.spd_up.config(command=lambda btn=self.spd_up, 
                            subsystem='speed', sign='-':
                            self.update_var(btn, subsystem, sign))
-        self.spd_down.config(command=lambda btn=self.spd_down,                             subsystem='speed', sign='-':
+        self.spd_down.config(command=lambda btn=self.spd_down,                            
+                             subsystem='speed', sign='-':
                              self.update_var(btn, subsystem, sign))
         
     def grid(self, **kwargs):
