@@ -67,10 +67,11 @@ class MenuBar(tk.Frame):
         self.lbls.grid_propagate(0)
         self.watch = tk.Label(self.lbls,font=(FONT, MEDIUM),fg='white',bg=MENU)
         self.status_lbl = tk.Label(self.lbls,font=(FONT,MEDIUM),fg='white',bg=MENU,
-                               text='Bioreactor\n[Online]')
+                               text='Bioreactor\n[Offline]')
         self.modify_btn = tk.Button(self, text='MODIFY', relief='flat',
                                     font=(FONT_BOLD,MEDIUM),fg='white',bg=GREEN,
-                                    activebackground=GREEN,highlightthickness=0)
+                                    activebackground=GREEN,highlightthickness=0,
+                                    command=self.manager.open_updater)
         self.logout_btn=tk.Button(self, text='LOGOUT', relief='flat',
                                   font=(FONT_BOLD,MEDIUM), fg='white',bg=YELLOW,
                                   activebackground=YELLOW,highlightthickness=0,
@@ -98,6 +99,7 @@ class MenuBar(tk.Frame):
     def update_time(self):
         current_time = time.strftime('%A\n%H:%M:%S')
         self.watch.config(text=current_time)
+        self.parent.after(TIME_DELAY, self.update_time)
         
 class MenuBtns(tk.Frame):
     def __init__(self, parent, manager, user, width, height, **kwargs):
@@ -170,7 +172,7 @@ class MenuBtns(tk.Frame):
         self.spd_frame.rowconfigure(1, weight=1)
         self.spd_val = tk.Label(self.spd_frame, text='1500 RPM', bg=RED,
                                 fg='white', font=(FONT_BOLD, LARGE))
-        self.spd_lbl = tk.Label(self.spd_frame, text='Current Motor Speed',
+        self.spd_lbl = tk.Label(self.spd_frame, text='Current Stirring Speed',
                                 bg=RED, fg='white', font=(FONT, FONTSIZE))  
         self.spd_canv = tk.Canvas(self.spd_frame, highlightthickness=0, bg=RED)
 
@@ -183,8 +185,8 @@ class MenuBtns(tk.Frame):
                             btn=self.temp_canv, graph='temperature':
                             self.manager.change_graph(title, y_axis, colour,
                                                       btn, graph, event))
-        self.spd_canv.bind("<Button-1>", lambda event, title='Motor Speed',
-                           y_axis='Motor Speed (RPM)', colour=RED,
+        self.spd_canv.bind("<Button-1>", lambda event, title='Stirring Speed',
+                           y_axis='Stirring Speed (RPM)', colour=RED,
                            btn=self.spd_canv, graph='speed':
                            self.manager.change_graph(title, y_axis, colour,
                                                      btn, graph, event))

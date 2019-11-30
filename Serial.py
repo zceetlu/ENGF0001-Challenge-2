@@ -74,8 +74,17 @@ class SerialPort(serial.Serial):
             Utilities.error_msg('Disconnected', 'The MSP board was disconnected')
             return False, False, False
 
+    def send_data(self, msg=''):
+        if not msg.startswith('<'): #wrap our message with start and stop markers
+            msg = '<' + msg
+        if msg[-1] != '>':
+            msg += '>'
+        #encoded_msg = bytes(msg)
+        encoded_msg = msg.encode() #convert msg into bytes to send
+        self.write(encoded_msg)
+        
     def close(self):
         #send message to board to stop while loop in energia sketch
-        self.write(bytes(b'<stop>'))
+        self.send_data('stop')
         self.close()
 

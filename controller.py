@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 '''
 Uses alot of cpu - 100% of 3/8 cores
-Admin needs to be able to alter values if needed
+Tk error when messagebox is open and user closes UI
+Fix serial error handling-user unplugs device, user plugs in device after login
 '''
-import IntroUI, LoginUI, Utilities, Serial, serial
-#import ControlUI_V as C_UI
+import IntroUI, LoginUI, Utilities, Serial, Bioreactor, Updater, serial
 import c_ui_v2 as C_UI
 from Constants import *
 import tkinter as tk
 
 class UI_Manager:
     def __init__(self, parent):
-        self.parent, self.dashboard = parent, None
+        self.parent, self.connected, self.logged_in = parent, False, False
         self.loaded, self.graph_colour, self.serial = False, None, None
         self.vals = {'pH': [], 'temperature': [], 'speed': []}
         self.current_graph = ''
@@ -32,6 +32,7 @@ class UI_Manager:
         self.open_login()
 
     def open_login(self):
+        self.logged_in = False
         self.close_all()
         self.login=LoginUI.LoginMenu(self.parent,self,SCREENWIDTH,SCREENHEIGHT,
                                      bg=GREY, highlightthickness=0)
@@ -50,6 +51,7 @@ class UI_Manager:
         
     def open_dashboard(self, user='GUEST'):
         self.close_all()
+        self.logged_in = True
         self.dashboard=C_UI.BioreactorUI(self.parent,self, user, SCREENWIDTH,
                                          SCREENHEIGHT, bg=GREY,
                                          highlightthickness=0)
@@ -59,24 +61,47 @@ class UI_Manager:
 
     def run_dashboard(self):
         self.dashboard.graph_display.default_screen()
-        self.serial_connect()
-        self.graph_setup()
-        if self.read_from_serial_port():
-            self.dashboard.graph_display.anim.event_source.stop()
-            self.close_serial_port()
-            self.dashboard.graph_display.default_screen()
+        self.connected = self.serial_connect()
+        if self.connected:
+            reactor.serial_port = self.serial
+            self.graph_setup()
+            if self.read_from_serial_port():
+                self.dashboard.graph_display.anim.event_source.stop()
+                self.close_serial_port()
+                self.dashboard.graph_display.default_screen()
 
+    def config_updater(self):
+        self.updater_win = tk.Toplevel(win)
+        self.updater_win.geometry('{}x{}'.format(int(0.5*SCREENWIDTH), int(0.5*SCREENHEIGHT)))
+        self.updater_win.title('Alter pH, Temperature and Stirring Speed of bioreactor')
+        self.updater_win.columnconfigure(0, weight=1)
+        self.updater_win.rowconfigure(0, weight=1)
+        self.updater_win.attributes('-topmost',True)
+        self.updater_win.update()
+        self.updater_win.attributes('-topmost',False)
+        Utilities.centralise(self.updater_win)
+
+    def open_updater(self):
+        self.config_updater()
+        self.modify_ui = Updater.UpdaterUI(self.updater_win, reactor,
+                                           width=0.5*SCREENWIDTH,
+                                           height=0.5*SCREENHEIGHT)
+        self.modify_ui.grid(row=0, column=0, sticky='nesw')
+        
     def serial_connect(self):
-        try: self.serial = Serial.SerialPort(port=PORT, baud_rate=BAUD_RATE)
+        try:
+            self.serial = Serial.SerialPort(port=PORT, baud_rate=BAUD_RATE)
+            return True
         except (OSError, serial.serialutil.SerialException):
             Utilities.error_msg('No connection established',
                                 'Board is not connected! Cannot read serial data from it.')
             self.parent.update_idletasks()
-            self.parent.after(RETRY_DELAY, self.serial_connect) #wait 1s before checking for connection again
+            if self.logged_in: #wait 1s before checking for connection again
+                self.parent.after(RETRY_DELAY, self.serial_connect) 
 
     def graph_setup(self):
         self.dashboard.graph_display.setup_graph()
-        self.change_graph('Motor Speed', 'Motor Speed (RPM)', RED,
+        self.change_graph('Stirring Speed', 'Stirring Speed (RPM)', RED,
                           self.dashboard.menu_options.spd_canv, 'speed')
         self.dashboard.graph_display.run_animation()
         
@@ -106,7 +131,7 @@ class UI_Manager:
         self.dashboard.graph_display.ys = [y[1] for y in self.vals[self.current_graph]]
         self.dashboard.menu_options.update_lbls()
         self.dashboard.menu_bar.update_status()
-        self.dashboard.menu_bar.update_time()
+        #self.dashboard.menu_bar.update_time()
         
     def change_graph(self, title, y_axis, colour, btn, graph, event=None):
         self.toggle_btns(btn)
@@ -142,14 +167,6 @@ def close_ui(win, event=None):
     except AttributeError:
         win.quit()
         win.destroy()
-    
-def centralise(win):
-    win.update_idletasks() 
-    width = win.winfo_width()
-    height = win.winfo_height()
-    x = (win.winfo_screenwidth() // 2) - (width // 2)
-    y = (win.winfo_screenheight() // 2) - (height // 2)
-    win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
 def init_win():  
     win = tk.Tk(className='bioreactor UI')
@@ -160,10 +177,11 @@ def init_win():
     win.rowconfigure(1, weight=1)
     win.bind('<Escape>', lambda event, win=win: close_ui(win, event))
     win.protocol("WM_DELETE_WINDOW", lambda win=win: close_ui(win))
-    centralise(win)
+    Utilities.centralise(win)
     return win
 
 if __name__ == '__main__':
+    reactor = Bioreactor.Bioreactor()
     win = init_win()
     UI = UI_Manager(win)
     #UI.run()
