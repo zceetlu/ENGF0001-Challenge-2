@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 #vertical version of UI
 """
-Consider making buttons on menu a clickable canvas
+Consider allowing user to save image of a graph to file
 
 Have indicator for each button indicating whether value is at optimal level or
 needs adjusting/attention
-
-Matplotlib is slow to close
 """
 
 import time
 import tkinter as tk
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import matplotlib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from Constants import *
@@ -95,14 +94,10 @@ class MenuBar(tk.Frame):
         if self.manager.serial is not None: self.status = 'Online'
         else: self.status = 'Offline'
         self.status_lbl.config(text='Bioreactor\n[{}]'.format(self.status))
-        self.parent.update_idletasks()
-        self.after(800, self.update_status)
             
     def update_time(self):
         current_time = time.strftime('%A\n%H:%M:%S')
         self.watch.config(text=current_time)
-        self.parent.update_idletasks()
-        self.after(800, self.update_time)
         
 class MenuBtns(tk.Frame):
     def __init__(self, parent, manager, user, width, height, **kwargs):
@@ -115,14 +110,14 @@ class MenuBtns(tk.Frame):
 
     def update_lbls(self):
         if self.manager.serial is not None:
-            if len(self.manager.serial.phs) > 0:
-                self.current_pH = self.manager.serial.phs[-1][1]
+            if len(self.manager.vals['pH']) > 0:
+                self.current_pH = self.manager.vals['pH'][-1][1]
             else: self.current_pH = 0
-            if len(self.manager.serial.temps) > 0:
-                self.current_temp = self.manager.serial.temps[-1][1]
+            if len(self.manager.vals['temperature']) > 0:
+                self.current_temp = self.manager.vals['temperature'][-1][1]
             else: self.current_temp = 0
-            if len(self.manager.serial.speeds) > 0:
-                self.current_speed = self.manager.serial.speeds[-1][1]
+            if len(self.manager.vals['speed']) > 0:
+                self.current_speed = self.manager.vals['speed'][-1][1]
             else: self.current_speed = 0
         else:
             self.current_pH = 0
@@ -132,8 +127,6 @@ class MenuBtns(tk.Frame):
         self.ph_val.config(text=str(self.current_pH))
         self.temp_val.config(text='{}°C'.format(self.current_temp))
         self.spd_val.config(text='{} RPM'.format(self.current_speed))
-        self.parent.update_idletasks()
-        self.parent.after(SERIAL_DELAY, self.update_lbls)
     
     def init_widgets(self):
         self.columnconfigure(0, weight=1)
@@ -156,48 +149,45 @@ class MenuBtns(tk.Frame):
         self.ph_frame.rowconfigure(1, weight=1)
         self.ph_val = tk.Label(self.ph_frame, text='7', bg=GREEN, fg='white',
                               font=(FONT_BOLD, LARGE))
-        self.ph_lbl = tk.Label(self.ph_frame, text='Current pH of Yeast', bg=GREEN,
-                               fg='white', font=(FONT, FONTSIZE))
-        self.ph_btn = tk.Button(self.ph_frame, bg=GREEN, relief='flat',
-                                activebackground=GREEN, highlightthickness=0)
+        self.ph_lbl = tk.Label(self.ph_frame, text='Current pH of Yeast',
+                               bg=GREEN, fg='white', font=(FONT, FONTSIZE))
+        self.ph_canv = tk.Canvas(self.ph_frame, highlightthickness=0, bg=GREEN)
 
         self.temp_frame = tk.Frame(self, bg=YELLOW, highlightthickness=0)
         self.temp_frame.columnconfigure(0, weight=1)
         self.temp_frame.rowconfigure(0, weight=3)
         self.temp_frame.rowconfigure(1, weight=1)
-        self.temp_val = tk.Label(self.temp_frame, text='32°C',bg=YELLOW,fg='white',
-                                 font=(FONT_BOLD, LARGE))
+        self.temp_val = tk.Label(self.temp_frame, text='32°C',bg=YELLOW,
+                                 fg='white', font=(FONT_BOLD, LARGE))
         self.temp_lbl = tk.Label(self.temp_frame, text='Current Temperature',
                                  bg=YELLOW, fg='white', font=(FONT, FONTSIZE))
-        self.temp_btn = tk.Button(self.temp_frame, bg=YELLOW, relief='flat',
-                                  activebackground=YELLOW, highlightthickness=0)
-
+        self.temp_canv = tk.Canvas(self.temp_frame, highlightthickness=0,
+                                   bg=YELLOW)
+        
         self.spd_frame = tk.Frame(self, bg=RED, highlightthickness=0)
         self.spd_frame.columnconfigure(0, weight=1)
         self.spd_frame.rowconfigure(0, weight=3)
         self.spd_frame.rowconfigure(1, weight=1)
         self.spd_val = tk.Label(self.spd_frame, text='1500 RPM', bg=RED,
                                 fg='white', font=(FONT_BOLD, LARGE))
-        self.spd_lbl = tk.Label(self.spd_frame, text='Current Motor Speed', bg=RED,
-                                fg='white', font=(FONT, FONTSIZE))
-        self.spd_btn = tk.Button(self.spd_frame, bg=RED, relief='flat',
-                                 state='active',
-                                 activebackground=RED, highlightthickness=0)
+        self.spd_lbl = tk.Label(self.spd_frame, text='Current Motor Speed',
+                                bg=RED, fg='white', font=(FONT, FONTSIZE))  
+        self.spd_canv = tk.Canvas(self.spd_frame, highlightthickness=0, bg=RED)
 
-        self.ph_btn.config(command=lambda title='pH of yeast',y_axis='pH',
-                           colour=GREEN, btn=self.ph_btn, graph='pH':
-                           self.manager.change_graph(title, y_axis, colour,
-                                                     btn,  graph))
-        self.temp_btn.config(command=lambda title='Temperature of yeast',
-                             y_axis='Temperature (°C)', colour=YELLOW,
-                             btn=self.temp_btn, graph='temperature':
-                             self.manager.change_graph(title, y_axis, colour,
-                                                       btn, graph))
-        self.spd_btn.config(command=lambda title='Motor Speed',
-                            y_axis='Motor Speed (RPM)', colour=RED,
-                            btn=self.spd_btn, graph='speed':
+        self.ph_canv.bind("<Button-1>", lambda event, title='pH of yeast',
+                          y_axis='pH', colour=GREEN,btn=self.ph_canv,graph='pH':
+                          self.manager.change_graph(title, y_axis, colour,
+                                                    btn,  graph, event))
+        self.temp_canv.bind("<Button-1>",lambda event, title='Temperature of yeast',
+                            y_axis='Temperature (°C)', colour=YELLOW,
+                            btn=self.temp_canv, graph='temperature':
                             self.manager.change_graph(title, y_axis, colour,
-                                                       btn, graph))
+                                                      btn, graph, event))
+        self.spd_canv.bind("<Button-1>", lambda event, title='Motor Speed',
+                           y_axis='Motor Speed (RPM)', colour=RED,
+                           btn=self.spd_canv, graph='speed':
+                           self.manager.change_graph(title, y_axis, colour,
+                                                     btn, graph, event))
                            
         for widget in self.winfo_children():
             widget.grid_propagate(0)
@@ -213,25 +203,30 @@ class MenuBtns(tk.Frame):
         self.ph_frame.grid(row=1, column=0, sticky='nesw', pady=(20,0), padx=20)
         self.ph_val.grid(row=0, column=0, sticky='nsw', pady=10, padx=10)
         self.ph_lbl.grid(row=1, column=0, pady=10, sticky='nsw', padx=5)
-        self.ph_btn.grid(row=0, column=0, columnspan=2, rowspan=2,sticky='nesw')
-        self.ph_btn.lower()
+        self.ph_canv.grid(row=0, column=0, columnspan=2,rowspan=2,sticky='nesw')
+        self.ph_val.lift()
+        self.ph_lbl.lift()
         
         self.temp_frame.grid(row=2, column=0, sticky='nesw',pady=(20,0),padx=20)
         self.temp_val.grid(row=0, column=0, sticky='nsw', pady=10, padx=10)
         self.temp_lbl.grid(row=1, column=0, pady=10, sticky='nsw', padx=5)
-        self.temp_btn.grid(row=0,column=0,columnspan=2,rowspan=2,sticky='nesw')
-        self.temp_btn.lower()
+        self.temp_canv.grid(row=0,column=0,columnspan=2,rowspan=2,sticky='nesw')
+        self.temp_val.lift()
+        self.temp_lbl.lift()
         
         self.spd_frame.grid(row=3, column=0, sticky='nesw', pady=20, padx=20)
         self.spd_val.grid(row=0, column=0, sticky='nsw', pady=10, padx=5)
         self.spd_lbl.grid(row=1, column=0, pady=10, sticky='nsw', padx=5)
-        self.spd_btn.grid(row=0, column=0, columnspan=2,rowspan=2,sticky='nesw')
-        self.spd_btn.lower()
+        self.spd_canv.grid(row=0,column=0,columnspan=2,rowspan=2,sticky='nesw')
+        self.spd_val.lift()
+        self.spd_lbl.lift()
 
 class GraphFrame(tk.Frame):
     def __init__(self, parent, width, height, **kwargs):
         super().__init__(parent, width=width, height=height, **kwargs)
         self.parent, self.width,self.height,self.body=parent,width,height,None
+        self.xs, self.ys = [], []
+        self.graph_title, self.graph_colour, self.y_axis = '', RED, ''
         matplotlib.use("TkAgg")
         self.init_widgets()
         
@@ -240,7 +235,7 @@ class GraphFrame(tk.Frame):
         self.columnconfigure(0, weight=1)
         self.grid_propagate(0)
 
-        self.title_tab = tk.Label(self, bg='white', font=(FONT, FONTSIZE))
+        self.title_tab = tk.Label(self, bg='white', font=(FONT, LARGE))
         txt=('Either select a value to display on the left '+
              'or it may be the case that the MSP432 board is not connected.')
         self.body = tk.Message(self, bg='white', text=txt, font=(FONT, MEDIUM),
@@ -252,52 +247,44 @@ class GraphFrame(tk.Frame):
         self.title_tab.grid(row=0, column=0, sticky='esw',padx=10, pady=(10,0))
 
     def default_screen(self):
-       # self.init_widgets()
-
-       #invalid command name error here:
         self.title_tab.config(text='No data to display!', fg='black')
-       # self.title_tab.grid(row=0, column=0, sticky='new', padx=10, pady=10)
         self.body.grid(row=1, column=0, sticky='new', padx=10, pady=10)
         self.parent.update()
         
-    def clear(self):
-        self.body.grid_forget()
-        for widget in self.winfo_children():
-            if widget != self.title_tab and widget !=self.body:
-                widget.destroy()
-        self.parent.update()
-    #optimise
-    #graph uses 12gb of ram
     def setup_graph(self):
         self.figure = plt.Figure()
         self.graph_plot = self.figure.add_subplot(1, 1, 1)
         self.graph_canvas = FigureCanvasTkAgg(self.figure, self)
         self.graph_canvas.get_tk_widget().grid(row=1, column=0, sticky='nesw',
                                                padx=10)
-
-    
-    def plot_optimal_vals(self, graph, subplot, colour=RED):
-        min_val, max_val = OPTIMAL_VALS[graph]
-        subplot.axhline(y=min_val, color=colour, linestyle='--')
-        subplot.axhline(y=max_val, color=colour, linestyle='--')
         
-    def plot_graph(self, graph_title='Motor Speed', y_axis='Motor Speed (RPM)',
-                   colour=RED, values=[]):
-        #setup
-        xs = [x[0] for x in values]
-        ys = [y[1] for y in values]
-        #plotting
-        self.graph_plot.cla()
-        self.graph_plot.plot(xs, ys, color=colour)
-        self.plot_optimal_vals(graph_title, self.graph_plot, colour)
-        #axes
-        self.title_tab.config(text='Graph of {} against time'.format(graph_title),
-                              fg=colour)
-        self.graph_plot.set_xlabel('Time (seconds)',fontsize=FONTSIZE,color=colour,
-                              horizontalalignment='center', fontname=FONT)
-        self.graph_plot.set_ylabel(y_axis,fontsize=FONTSIZE,color=colour,
+    def run_animation(self):
+        self.anim = animation.FuncAnimation(self.figure, self.plot_graph,
+                                            interval=FREQUENCY, frames=FRAMES)
+        self.graph_canvas.draw()
+        self.parent.update()
+        
+    def plot_optimal_vals(self, graph, subplot, colour=RED):
+        min_val, max_val = OPTIMAL_VALS[self.graph_title]
+        self.graph_plot.axhline(y=min_val,color=self.graph_colour,linestyle='--')
+        self.graph_plot.axhline(y=max_val,color=self.graph_colour,linestyle='--')
+
+    def update_graph_axes(self):
+        self.title_tab.config(text='Graph of {} against time'.format(self.graph_title),
+                              fg=self.graph_colour)
+        self.graph_plot.set_xlabel('Time (seconds)',fontsize=FONTSIZE,
+                                   color=self.graph_colour,
+                                   horizontalalignment='center', fontname=FONT)
+        self.graph_plot.set_ylabel(self.y_axis, fontsize=FONTSIZE,
+                                   color=self.graph_colour,
                                    verticalalignment='center', fontname=FONT)
         self.graph_plot.tick_params(color=MENU, labelcolor=MENU)
         for spine in self.graph_plot.spines.values():
             spine.set_edgecolor(MENU)
+
+    def plot_graph(self, i):
+        self.graph_plot.clear()
+        self.update_graph_axes()
+        self.graph_plot.plot(self.xs, self.ys, color=self.graph_colour)
+        self.plot_optimal_vals(self.graph_title,self.graph_plot,self.graph_colour)
         self.graph_canvas.draw()
