@@ -38,5 +38,3 @@ The control system has to access levels: **GUEST** and **ADMIN**.
 * The **ADMIN** can perform all actions a **GUEST** can but has an additional privilege: they have the option to alter the operation of the bioreactor in a separate menu, allowing them to adjust the pH, stirring speed and temperature of the bioreactor.
 
 ***
-## Example
-![Screenshot of UI](https://imgur.com/a/EGDpi6d)
