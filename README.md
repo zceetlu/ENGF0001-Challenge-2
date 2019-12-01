@@ -1,6 +1,8 @@
 # ENGF0001: Bioreactor Control System UI
 Project files for the bioreactor control system and user interface.
 
+***
+
 # Overview
 This is the user interface displayed on a computer, connected via USB to the MSP432 microcontroller. The entire system is comprised of stirring speed, heating and pH management and control systems. The UI also displays real-time values from each subsystem ( _via serial communication_ ) and plots these data on three graphs - the user can display any one of these graphs. Users with elevated access privileges can also manually adjust these values to suit their needs.
 
