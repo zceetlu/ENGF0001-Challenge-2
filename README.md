@@ -7,7 +7,9 @@ This is the user interface displayed on a computer, connected via USB to the MSP
 ***
 
 # Dependencies
-There are no other dependencies required to use the control system except for the _Energia_, _Code Composer Studio (CCS)_ and a version of _Python_ **3.6.9** or newer.
+* For serial communication between the MSP432 board and the UI, the external module [Pyserial](https://pypi.org/project/pyserial/) must also be installed.
+
+* There are no other dependencies required to use the control system except for the _Energia_, _Code Composer Studio (CCS)_ and a version of _Python_ **3.6.9** or newer.
 
 _Please do note that there are problems with Eenergia and CCS on newer versions of MacOS so the UI will only safely run on Windows and Linux._
 
