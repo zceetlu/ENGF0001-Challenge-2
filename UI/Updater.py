@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import tkinter as tk
 from Constants import *
-import operator, Utilities
+from operator import add, sub
+import Utilities
 
 class UpdaterUI(tk.Frame):
     def __init__(self, parent, reactor, width, height, **kwargs):
@@ -10,10 +11,11 @@ class UpdaterUI(tk.Frame):
         self.speed = self.reactor.speed
         self.ph = self.reactor.ph
         self.temperature = self.reactor.temperature
-        self.mappings = {'+': operator.add, '-': operator.sub}
+        self.mappings = {'+': add, '-': sub}
         self.vals = {'ph': self.ph, 'temperature':self.temperature,
                      'speed':self.speed}
         self.init_widgets()
+        self.update_lbls()
 
     def init_widgets(self):
         self.grid_propagate(0)
@@ -34,11 +36,11 @@ class UpdaterUI(tk.Frame):
         self.ph_title = tk.Label(self.ph_frame, text='pH',
                                    font=(FONT, FONTSIZE), bg=MENU, fg='white')
         self.ph_up = tk.Button(self.ph_frame, text='▲', font=(FONT, LARGE),
-                                 relief='flat', bg=GREEN, fg='white')
+                                 relief='flat', fg=GREEN, bg=GREY)
         self.ph_lbl=tk.Label(self.ph_frame,text=self.ph,
-                               font=(FONT, LARGE), bg=GREY, fg='black')
+                               font=(FONT, FONTSIZE), bg=GREY, fg='black')
         self.ph_down = tk.Button(self.ph_frame, text='▼', font=(FONT,LARGE),
-                                 relief='flat', bg=GREEN, fg='white')
+                                 relief='flat', fg=GREEN, bg=GREY)
         
         self.temp_frame = tk.Frame(self, bg=GREY, highlightthickness=0)
         self.temp_frame.columnconfigure(0, weight=1)
@@ -47,11 +49,11 @@ class UpdaterUI(tk.Frame):
         self.temp_title = tk.Label(self.temp_frame, text='Temperature',
                                    font=(FONT, FONTSIZE), bg=MENU, fg='white')
         self.temp_up = tk.Button(self.temp_frame, text='▲', font=(FONT, LARGE),
-                                 relief='flat', bg=YELLOW, fg='white')
+                                 relief='flat', fg=YELLOW, bg=GREY)
         self.temp_lbl=tk.Label(self.temp_frame,text='{}°C'.format(self.temperature),
-                               font=(FONT, LARGE), bg=GREY, fg='black')
+                               font=(FONT, FONTSIZE), bg=GREY, fg='black')
         self.temp_down = tk.Button(self.temp_frame, text='▼', font=(FONT,LARGE),
-                                 relief='flat', bg=YELLOW, fg='white')
+                                 relief='flat', fg=YELLOW, bg=GREY)
 
         self.spd_frame = tk.Frame(self, bg=GREY, highlightthickness=0)
         self.spd_frame.columnconfigure(0, weight=1)
@@ -60,11 +62,11 @@ class UpdaterUI(tk.Frame):
         self.spd_title = tk.Label(self.spd_frame, text='Motor Speed',
                                    font=(FONT, FONTSIZE), bg=MENU, fg='white')
         self.spd_up = tk.Button(self.spd_frame, text='▲', font=(FONT, LARGE),
-                                 relief='flat', bg=RED, fg='white')
+                                 relief='flat', fg=RED, bg=GREY)
         self.spd_lbl=tk.Label(self.spd_frame,text='{} RPM'.format(self.speed),
-                               font=(FONT, LARGE), bg=GREY, fg='black')
+                               font=(FONT, FONTSIZE), bg=GREY, fg='black')
         self.spd_down = tk.Button(self.spd_frame, text='▼', font=(FONT,LARGE),
-                                 relief='flat', bg=RED, fg='white')
+                                 relief='flat', fg=RED, bg=GREY)
 
         self.apply_btn = tk.Button(self, text='Apply', font=(FONT, FONTSIZE),
                                     relief='flat', bg=MENU, fg='white',
@@ -137,17 +139,15 @@ class UpdaterUI(tk.Frame):
         new_value, valid=self.check_vals(btn,self.vals[subsystem],subsystem,sign)
         if valid:
             self.vals[subsystem] = new_value
+            self.ph = self.vals['ph']
+            self.temperature = self.vals['temperature']
+            self.speed = self.vals['speed']
             self.update_lbls()
         
     def update_lbls(self):
-        self.ph = self.vals['ph']
-        self.temperature = self.vals['temperature']
-        self.speed = self.vals['speed']
-        
         self.ph_lbl.config(text=str(self.ph))
         self.temp_lbl.config(text='{}°C'.format(self.temperature))
         self.spd_lbl.config(text='{} RPM'.format(self.speed))
-        self.parent.update()
 
     def confirm_updates(self):
         self.reactor.speed = self.speed

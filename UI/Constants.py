@@ -28,7 +28,7 @@ USERNAME = 'ADMIN'
 PASSWORD = '12345'
 
 #Serial read constants
-PORT = '/dev/ttyACM1'
+PORT = '/dev/ttyACM0'
 BAUD_RATE = 9600
 SERIAL_DELAY = 100 #100 miliseconds
 MAX_DATA_POINTS = 60

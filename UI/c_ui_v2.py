@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
-#vertical version of UI
-"""
-Consider allowing user to save image of a graph to file
+#Consider allowing user to save image of a graph to file
 
-Have indicator for each button indicating whether value is at optimal level or
-needs adjusting/attention
-"""
-
-import time
 import tkinter as tk
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import matplotlib
+from matplotlib import use as graph_use
+from matplotlib.pyplot import Figure
+from time import strftime
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from Constants import *
 
@@ -86,7 +80,7 @@ class MenuBar(tk.Frame):
         self.lbls.grid(row=0, column=0, sticky='nesw', pady=20, padx=10)
         self.watch.grid(row=0, column=0, sticky='new', pady=(0, 20))
         self.status_lbl.grid(row=1, column=0, sticky='new', pady=(0, 20))
-        if self.user == USERNAME:
+        if self.user == USERNAME and self.manager.connected:
             self.modify_btn.grid(row=1, column=0, sticky='nesw',pady=(0,20),padx=20)
         self.logout_btn.grid(row=2, column=0, sticky='nesw',pady=(0,20),padx=20)
         self.shutdown_btn.grid(row=3,column=0,sticky='nesw',pady=(0,20),padx=20)
@@ -97,7 +91,7 @@ class MenuBar(tk.Frame):
         self.status_lbl.config(text='Bioreactor\n[{}]'.format(self.status))
             
     def update_time(self):
-        current_time = time.strftime('%A\n%H:%M:%S')
+        current_time = strftime('%A\n%H:%M:%S')
         self.watch.config(text=current_time)
         self.parent.after(TIME_DELAY, self.update_time)
         
@@ -229,7 +223,7 @@ class GraphFrame(tk.Frame):
         self.parent, self.width,self.height,self.body=parent,width,height,None
         self.xs, self.ys = [], []
         self.graph_title, self.graph_colour, self.y_axis = '', RED, ''
-        matplotlib.use("TkAgg")
+        graph_use("TkAgg")
         self.init_widgets()
         
     def init_widgets(self):
@@ -254,7 +248,7 @@ class GraphFrame(tk.Frame):
         self.parent.update()
         
     def setup_graph(self):
-        self.figure = plt.Figure()
+        self.figure = Figure()
         self.graph_plot = self.figure.add_subplot(1, 1, 1)
         self.graph_canvas = FigureCanvasTkAgg(self.figure, self)
         self.graph_canvas.get_tk_widget().grid(row=1, column=0, sticky='nesw',

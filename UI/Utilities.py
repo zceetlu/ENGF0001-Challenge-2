@@ -1,9 +1,10 @@
 import tkinter as tk
 from Constants import *
 
-def error_msg(title='', msg=''):
-    tk.messagebox.showerror(title, msg)
-    return
+def error_msg(title='', msg=''): #try, except needed when user closes window
+    #before closing the messagebox
+    try: tk.messagebox.showerror(title, msg)
+    except tk.TclError: return
 
 def centralise(win):
     win.update_idletasks() 

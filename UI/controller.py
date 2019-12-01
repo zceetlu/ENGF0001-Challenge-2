@@ -1,36 +1,20 @@
 #!/usr/bin/env python3
 '''
 Uses alot of cpu - 100% of 3/8 cores
-Tk error when messagebox is open and user closes UI - check if dialogbox is open
-before closing
-Fix serial error handling-user unplugs device, user plugs in device after login
+User cannot successfully reconnect the board after unplugging it
 '''
-import IntroUI, LoginUI, Utilities, Serial, Bioreactor, Updater, serial
+import LoginUI, Utilities, Serial, Bioreactor, Updater
 import c_ui_v2 as C_UI
 from Constants import *
+from serial.serialutil import SerialException as SerialError
 import tkinter as tk
 
 class UI_Manager:
     def __init__(self, parent):
         self.parent, self.connected, self.logged_in = parent, False, False
         self.loaded, self.graph_colour, self.serial = False, None, None
-        self.vals = {'pH': [], 'temperature': [], 'speed': []}
-        self.current_graph = ''
-
-    def load(self):
-        self.close_all()
-        self.load_screen=IntroUI.SplashScreen(self.parent, SCREENWIDTH,
-                                              SCREENHEIGHT, bg=GREY,
-                                              highlightthickness=0)
-        self.load_screen.grid(row=0, column=0, sticky='nesw')
-        self.load_screen.animate()
-
-    def run(self):
-        self.close_all()
-        if not self.loaded:
-            self.load()
-            self.loaded = True
-        self.open_login()
+        self.vals, self.user = {'pH': [], 'temperature': [], 'speed': []}, 'GUEST'
+        self.current_graph, self.updater_win, self.modify_ui = '', None, None
 
     def open_login(self):
         self.logged_in = False
@@ -43,7 +27,7 @@ class UI_Manager:
         username = self.login.user_entry.get()
         password = self.login.pass_entry.get()
         if username == USERNAME and password == PASSWORD:
-            self.close_all()
+            self.user = USERNAME
             self.open_dashboard('ADMIN')
         else:
             msg = 'Your login details were incorrect, please try again'
@@ -60,17 +44,6 @@ class UI_Manager:
         self.parent.update()
         self.run_dashboard()
 
-    def run_dashboard(self):
-        self.dashboard.graph_display.default_screen()
-        self.connected = self.serial_connect()
-        if self.connected:
-            reactor.serial_port = self.serial
-            self.graph_setup()
-            if self.read_from_serial_port():
-                self.dashboard.graph_display.anim.event_source.stop()
-                self.close_serial_port()
-                self.dashboard.graph_display.default_screen()
-
     def config_updater(self):
         self.updater_win = tk.Toplevel(win)
         self.updater_win.geometry('{}x{}'.format(int(0.5*SCREENWIDTH), int(0.5*SCREENHEIGHT)))
@@ -78,7 +51,6 @@ class UI_Manager:
         self.updater_win.columnconfigure(0, weight=1)
         self.updater_win.rowconfigure(0, weight=1)
         self.updater_win.attributes('-topmost',True)
-        self.updater_win.update()
         self.updater_win.attributes('-topmost',False)
         Utilities.centralise(self.updater_win)
 
@@ -88,17 +60,51 @@ class UI_Manager:
                                            width=0.5*SCREENWIDTH,
                                            height=0.5*SCREENHEIGHT)
         self.modify_ui.grid(row=0, column=0, sticky='nesw')
-        
-    def serial_connect(self):
+        self.updater_win.update()
+        self.parent.update()
+
+    def run_dashboard(self):
+        self.dashboard.graph_display.default_screen()
+        self.serial_connect()
+        if self.connected: self.serial_begin()
+            
+    def serial_begin(self):
+        if self.user == USERNAME:
+            self.dashboard.menu_bar.modify_btn.grid(row=1, column=0, sticky='nesw',pady=(0,20),padx=20)
+        reactor.serial_port = self.serial
+        self.graph_setup()
+        self.read_from_serial_port()
+
+    def end_connection(self):
+        self.connected = False
+        if self.dashboard.graph_display.anim.event_source:
+            self.dashboard.graph_display.anim.event_source.stop()
+        self.close_serial_port()
+        self.open_login()
+        self.parent.update()
+
+    def get_serial_port(self):
+        ports = Serial.list_available_ports()
+        if len(ports) == 0: raise SerialError
+        return ports[1] #after trial and error, the correct port is always 2nd
+    #element in list of ports
+    
+    def serial_connect(self, depth=0):
         try:
-            self.serial = Serial.SerialPort(port=PORT, baud_rate=BAUD_RATE)
-            return True
-        except (OSError, serial.serialutil.SerialException):
+            depth += 1
+            port = self.get_serial_port()
+            self.serial = Serial.SerialPort(port=port, baud_rate=BAUD_RATE)
+            self.serial.open_port()
+            self.connected = True
+            if depth > 1: #if we couldn't connect on the first attempt
+                self.serial_begin()
+        except (OSError, SerialError):
             Utilities.error_msg('No connection established',
                                 'Board is not connected! Cannot read serial data from it.')
             self.parent.update_idletasks()
             if self.logged_in: #wait 1s before checking for connection again
-                self.parent.after(RETRY_DELAY, self.serial_connect) 
+                self.parent.after(RETRY_DELAY, lambda depth=depth:
+                                  self.serial_connect(depth)) 
 
     def graph_setup(self):
         self.dashboard.graph_display.setup_graph()
@@ -107,16 +113,20 @@ class UI_Manager:
         self.dashboard.graph_display.run_animation()
         
     def read_from_serial_port(self):
-        if self.serial is None: return True
+        if self.serial is None or not self.connected:
+            self.end_connection()
+            return
         subsystem, value, elapsed_time = self.serial.read_value()
         if len([x for x in (subsystem, value, elapsed_time) if x == False]) > 0:
-            return True #fix ending
+            self.end_connection()
+            return
         if (len([x for x in (subsystem, value, elapsed_time) if x is None]) == 0
             and subsystem in self.vals.keys()):
             self.vals[subsystem] = Utilities.truncate(self.vals[subsystem])
             self.vals[subsystem].append((elapsed_time, value))
-        self.update_data()
-        self.parent.after(SERIAL_DELAY, self.read_from_serial_port)
+        if self.connected:
+            self.update_data()
+            self.parent.after(SERIAL_DELAY, self.read_from_serial_port)
             
     def toggle_btns(self, active):
         btns=[self.dashboard.menu_options.ph_canv,
@@ -124,17 +134,22 @@ class UI_Manager:
               self.dashboard.menu_options.spd_canv]
         for btn in btns:
             if btn == active:
-                btn.config(highlightbackground='black', highlightthicknes=3)
-            else: btn.config(highlightbackground=MENU, highlightthicknes=0)
+                btn.config(highlightbackground='black', highlightthickness=3)
+            else: btn.config(highlightbackground=MENU, highlightthickness=0)
 
     def update_data(self):
-        reactor.ph = self.vals['pH'][-1][1]
-        reaactor.temperature = self.vals['temperature'][-1][1]
-        reactor.speed = self.vals['speed'][-1][1]
-        self.dashboard.graph_display.xs = [x[0] for x in self.vals[self.current_graph]]
-        self.dashboard.graph_display.ys = [y[1] for y in self.vals[self.current_graph]]
-        self.dashboard.menu_options.update_lbls()
-        self.dashboard.menu_bar.update_status()
+        if self.serial is not None and self.serial.running:
+            if len(self.vals['pH']) > 0:
+                reactor.ph = self.vals['pH'][-1][1]
+            if len(self.vals['temperature']) > 0:
+                reactor.temperature = self.vals['temperature'][-1][1]
+            if len(self.vals['speed']) > 0:
+                reactor.speed = self.vals['speed'][-1][1]
+            self.dashboard.graph_display.xs = [x[0] for x in self.vals[self.current_graph]]
+            self.dashboard.graph_display.ys = [y[1] for y in self.vals[self.current_graph]]
+            self.dashboard.menu_options.update_lbls()
+            self.dashboard.menu_bar.update_status()
+        
         
     def change_graph(self, title, y_axis, colour, btn, graph, event=None):
         self.toggle_btns(btn)
@@ -145,11 +160,12 @@ class UI_Manager:
         self.dashboard.graph_display.graph_colour = colour
         self.dashboard.graph_display.update_graph_axes()
 
-    def close_serial_port(self):
-        if self.serial is not None:
-            self.serial.running = False
-            self.serial.close()
-            self.serial = None
+    def close_serial_port(self): #fix
+        pass
+##        if self.serial is not None and self.serial.running:
+##            self.serial.running = False
+##            self.serial.close()
+##            self.serial = None
             
     def shutdown(self):
         if tk.messagebox.askyesno('Confirm shutdown', 'Shutdown bioreactor?'):
@@ -177,7 +193,7 @@ def init_win():
     win.wm_iconbitmap(bitmap = "@icon.XBM")
     win.geometry('{}x{}'.format(SCREENWIDTH, SCREENHEIGHT))
     win.resizable(False, False)
-    win.rowconfigure(1, weight=1)
+    #win.rowconfigure(1, weight=1)
     win.bind('<Escape>', lambda event, win=win: close_ui(win, event))
     win.protocol("WM_DELETE_WINDOW", lambda win=win: close_ui(win))
     Utilities.centralise(win)
@@ -187,7 +203,5 @@ if __name__ == '__main__':
     reactor = Bioreactor.Bioreactor()
     win = init_win()
     UI = UI_Manager(win)
-    #UI.run()
-    #UI.open_login()
-    UI.open_dashboard()
+    UI.open_login()
     win.mainloop()

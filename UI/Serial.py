@@ -1,24 +1,30 @@
-import serial, time, Utilities
+import serial, Utilities
+import serial.tools.list_ports
 from Constants import *
+from time import time
+from glob import glob #access linux and mac os file structure hierarchy
+from sys import platform #get the platform of the user's device
 
-"""
-What happens if user disconnects board during reading
-User wants to connect board after logging in
-"""
+def list_available_ports():
+    return [x[0] for x in list(serial.tools.list_ports.comports())]
 
-#to optimise: may need to run in a different thread
 class SerialPort(serial.Serial):
-    def __init__(self, port='/dev/ttyACM0', baud_rate=9600,**kwargs):
+    def __init__(self, port='/dev/ttyACM0', baud_rate=9600, **kwargs):
         super().__init__(port, baudrate=baud_rate, **kwargs)
         self.running, self.reading_value = True, False
-        self.start_time = time.time()
+        self.start_time = time()
         self.time_elapsed = 0
-    
+
+    def open_port(self):
+        if not self.isOpen():
+            self.close()
+            self.open()
+            
     def convert(self, value):
         try:
             value = float(value)
             return value, True
-        except ValueError:
+        except ValueError: #has never actually been thrown
             error_msg('Conversion error',
                       'Could not convert "{}" into float.'.format(value))
             return value, False
@@ -67,10 +73,11 @@ class SerialPort(serial.Serial):
                     datatype, value = split_msg
                     value, converted = self.convert(value)
                     if converted:
-                        elapsed_time = time.time() - self.start_time
+                        elapsed_time = time() - self.start_time
                         return datatype, round(value, 1), elapsed_time
             return None, None, None
         except serial.serialutil.SerialException:
+            self.running = False
             Utilities.error_msg('Disconnected', 'The MSP board was disconnected')
             return False, False, False
 
@@ -85,6 +92,6 @@ class SerialPort(serial.Serial):
         
     def close(self):
         #send message to board to stop while loop in energia sketch
-        self.send_data('stop')
+        #self.send_data('stop') #fix
         self.close()
 
