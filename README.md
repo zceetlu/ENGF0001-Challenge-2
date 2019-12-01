@@ -20,7 +20,7 @@ _Please do note that there are problems with Energia and CCS on newer versions o
 ## Running the UI
 The UI is run by running the `controller.py` file but keep in mind that an Energia sketch needs to be currently running on the MSP board for any of its output to be displayed on the UI. No other files need to be accessed.
 
-_As a side note: depending on the operating system of the PC, the value of `PORT`in the `Constants.py` file may need to be altered to enable serial communication between the UI and MSP432 board._
+_As a side note: the system can detect the serial port being used by the MSP432 board at runtime depending on the operating system of the PC._
 * _Windows: **COM34**_
 * _Linux: **/dev/ttyACM0**_
 
@@ -35,7 +35,7 @@ _As a side note: depending on the operating system of the PC, the value of `PORT
 The control system has to access levels: **GUEST** and **ADMIN**.
 * The **GUEST** is able to view graphs representing the current state of the bioreactor and is able to shutdown operation altogether in emergency situations.
 
-* The **ADMIN** can perform all actions a **GUEST** can but has an additional privilege: they have the option to alter the operation of the bioreactor in a separate menu, allowing them to adjust the pH, stirring speed and temperature.
+* The **ADMIN** can perform all actions a **GUEST** can but has an additional privilege: they have the option to alter the operation of the bioreactor in a separate menu, allowing them to adjust the pH, stirring speed and temperature of the bioreactor.
 
 ***
 
