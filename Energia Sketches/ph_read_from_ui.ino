@@ -6,7 +6,7 @@ int main (void)
 {
     // if (Serial.available() > 0 and Serial.read(1) == '<')
     // {
-        char input_string[]= "ph,1.5";
+        char input_string[]= "ph,1.5"; // Serial.readStringUntil('<')
         char delim[]= ",";
         char* ptr = strtok(input_string, delim);
         printf("%s\n", ptr);
