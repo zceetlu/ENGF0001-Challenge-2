@@ -4,7 +4,7 @@
 
 int main (void)
 {
-    // if (Serial.available() > 0 && Serial.read(1) == '<')
+    // if (Serial.available() > 0 && Serial.read() == '<')
     // {
         char input_string[]= "ph,1.5"; // Serial.readStringUntil('<')
         char delim[]= ",";
