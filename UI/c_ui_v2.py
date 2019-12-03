@@ -279,6 +279,7 @@ class GraphFrame(tk.Frame):
             spine.set_edgecolor(MENU)
 
     def plot_graph(self, i):
+     #   self.parent.after(100) - should reduce CPU usage
         self.graph_plot.clear()
         self.update_graph_axes()
         self.graph_plot.plot(self.xs, self.ys, color=self.graph_colour)

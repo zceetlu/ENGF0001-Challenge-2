@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-'''
-Uses alot of cpu - 100% of 3/8 cores
-User cannot successfully reconnect the board after unplugging it
-'''
+#Uses alot of cpu - 100% of 3/8 cores
 import LoginUI, Utilities, Serial, Bioreactor, Updater
 import c_ui_v2 as C_UI
 from Constants import *
@@ -18,6 +15,7 @@ class UI_Manager:
 
     def open_login(self):
         self.logged_in = False
+        self.user = 'GUEST'
         self.close_all()
         self.login=LoginUI.LoginMenu(self.parent,self,SCREENWIDTH,SCREENHEIGHT,
                                      bg=GREY, highlightthickness=0)
@@ -27,7 +25,6 @@ class UI_Manager:
         username = self.login.user_entry.get()
         password = self.login.pass_entry.get()
         if username == USERNAME and password == PASSWORD:
-            self.user = USERNAME
             self.open_dashboard('ADMIN')
         else:
             msg = 'Your login details were incorrect, please try again'
@@ -37,7 +34,8 @@ class UI_Manager:
     def open_dashboard(self, user='GUEST'):
         self.close_all()
         self.logged_in = True
-        self.dashboard=C_UI.BioreactorUI(self.parent,self, user, SCREENWIDTH,
+        self.user = user
+        self.dashboard=C_UI.BioreactorUI(self.parent,self,user,SCREENWIDTH,
                                          SCREENHEIGHT, bg=GREY,
                                          highlightthickness=0)
         self.dashboard.grid(row=0, column=0, sticky='nesw')
@@ -117,7 +115,8 @@ class UI_Manager:
             self.end_connection()
             return
         subsystem, value, elapsed_time = self.serial.read_value()
-        if len([x for x in (subsystem, value, elapsed_time) if x == False]) > 0:
+        #fyi 0 == false
+        if len([x for x in (subsystem, value, elapsed_time) if x == -1]) > 0:
             self.end_connection()
             return
         if (len([x for x in (subsystem, value, elapsed_time) if x is None]) == 0
@@ -193,7 +192,6 @@ def init_win():
     win.wm_iconbitmap(bitmap = "@icon.XBM")
     win.geometry('{}x{}'.format(SCREENWIDTH, SCREENHEIGHT))
     win.resizable(False, False)
-    #win.rowconfigure(1, weight=1)
     win.bind('<Escape>', lambda event, win=win: close_ui(win, event))
     win.protocol("WM_DELETE_WINDOW", lambda win=win: close_ui(win))
     Utilities.centralise(win)

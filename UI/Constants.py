@@ -35,9 +35,9 @@ MAX_DATA_POINTS = 60
 RETRY_DELAY = 1000
 
 #graph constants
-OPTIMAL_VALS = {'pH of yeast': (7, 7), 'Temperature of yeast': (29, 32),
-                'Stirring Speed': (1450, 1550), '': (0, 0)}
-VAL_RANGES = {'ph': (0, 12, 0.5), 'speed': (1000, 3000, 50),
+OPTIMAL_VALS = {'pH of yeast': (7, 7), 'Temperature of yeast': (28, 33),
+                'Stirring Speed': (280, 280), '': (0, 0)}
+VAL_RANGES = {'ph': (0, 12, 0.5), 'speed': (20, 500, 10),
               'temperature': (20, 45, 1)} #if admin wants to alter current vals
 FREQUENCY = 20
 FRAMES = 200

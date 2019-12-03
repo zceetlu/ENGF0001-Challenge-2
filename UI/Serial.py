@@ -2,8 +2,6 @@ import serial, Utilities
 import serial.tools.list_ports
 from Constants import *
 from time import time
-from glob import glob #access linux and mac os file structure hierarchy
-from sys import platform #get the platform of the user's device
 
 def list_available_ports():
     return [x[0] for x in list(serial.tools.list_ports.comports())]
@@ -25,8 +23,8 @@ class SerialPort(serial.Serial):
             value = float(value)
             return value, True
         except ValueError: #has never actually been thrown
-            error_msg('Conversion error',
-                      'Could not convert "{}" into float.'.format(value))
+            Utilities.error_msg('Conversion error',
+                                'Could not convert "{}" into float.'.format(value))
             return value, False
 
     def read_data(self):
@@ -45,7 +43,7 @@ class SerialPort(serial.Serial):
                     self.reading_value = False
                     return buffer
                 #rare occurence when two messages read as one
-                elif one_byte == b'<':
+                elif one_byte == b'<': #break instead?
                     self.reading_value = False
                     return buffer
                 else:
@@ -67,7 +65,7 @@ class SerialPort(serial.Serial):
         try:
             msg_digest, datatype, value = None, None, None
             msg_digest = self.read_data()
-            if msg_digest is not None:
+            if msg_digest is not None and len(msg_digest) > 0:
                 split_msg = msg_digest.split(',')
                 if len(split_msg) == 2:
                     datatype, value = split_msg
@@ -76,10 +74,10 @@ class SerialPort(serial.Serial):
                         elapsed_time = time() - self.start_time
                         return datatype, round(value, 1), elapsed_time
             return None, None, None
-        except serial.serialutil.SerialException:
+        except serial.serialutil.SerialException as e:
             self.running = False
             Utilities.error_msg('Disconnected', 'The MSP board was disconnected')
-            return False, False, False
+            return -1, -1, -1
 
     def send_data(self, msg=''):
         if not msg.startswith('<'): #wrap our message with start and stop markers
