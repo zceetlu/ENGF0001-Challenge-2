@@ -1,10 +1,12 @@
+#include <iostream>
+int RUNNING = 1;
 
 int pHpin=A1; //pH vars
 int acid_LED=39;
 int base_LED=40;
 float F=9.6485309e4;
-float R=8.314510;
-int T=290;
+float phR=8.314510;
+int phT=290;
 float V_supply=0.66;
 float C=2.302585;
 float pH;
@@ -15,9 +17,10 @@ float pHmax = 7.5;
 
 int heater = 7; //temperature vars
 int Pot = 0;
-int R = 10000;
+int tempR = 10000;
 int Setpoint = 30; //should be 28-33
- 
+float tempT;
+
 //stirring vars
 int readCurrent = 35;//read Iout from photo-interrupter sq wave
 int controlMotor = 32 ; //output PWM to motot
@@ -27,13 +30,15 @@ int GND1 = 18;
 int GND2 = 17;
 
 int motorSpeed = 255;
-int recordTime =0;
+int recordTime = 0;
 int recordRotation=0;
 int lastCurrent = 0;
 int newCurrent=0;
+int RPM;
 
-int lowerRange = 200; // brm lower range for the motor = 600
-int upperRange = 1000; // brm upper range for the motor = 620
+int realRange = 600;
+int lowerRange = realRange -20;
+int upperRange = realRange +20;
 
 void setup() {
     pinMode(acid_LED, OUTPUT); //pH setup
@@ -42,19 +47,21 @@ void setup() {
 
     pinMode(Pot, INPUT); //temperature setup
     pinMode(heater, OUTPUT);
-    
+
     pinMode(readCurrent,INPUT); //stirring setup
     pinMode(controlMotor,OUTPUT);
     pinMode(Vcc1,OUTPUT);
     pinMode(Vcc2,OUTPUT);
     pinMode(GND1,OUTPUT);
     pinMode(GND2,OUTPUT);
+
     Serial.begin(9600);
 }
 
 void update_variables() {
     if (Serial.available() > 0 && Serial.read() == '<')
     {
+        //Serial.print("variable update received");
         char input[25];
         int charsRead = Serial.readBytesUntil('>', input, 25);
         input[charsRead] = '\0';
@@ -65,13 +72,15 @@ void update_variables() {
             pH = value;
         }
         else if (strcmp("temperature", subsystem)==1) {
-            temperature = value;
+            Setpoint = value;
         }
         else if (strcmp("speed", subsystem)==1) {
-            motorspeed = value;
+            motorSpeed = value;
         }
+
+     //   Serial.print("variables updated\n");
     }
-    delay(200);
+    delay(100);
 }
 
 void read_pH()
@@ -81,7 +90,7 @@ void read_pH()
     float V = V_pot*3.3/1012.0;      //used for test board
 
     //read pH value from UI if available here
-    float pH = 7.0+((F*(V_supply-V))/(R*T*C));
+    float pH = 7.0+((F*(V_supply-V))/(phR*phT*C));
 
          if (pH < pHmin) {
                digitalWrite(base_LED, HIGH);
@@ -90,8 +99,6 @@ void read_pH()
            if (pH > pHmax) {
                digitalWrite(base_LED, LOW);
                digitalWrite(acid_LED, HIGH);
-               Serial.print("<pH,");
-               Serial.println(pH);
            }
            else {
                digitalWrite(acid_LED, LOW);
@@ -100,32 +107,76 @@ void read_pH()
 }
 
 void read_temperature()
-{}
+{
+    int Pot = analogRead(A4);
+    float resistance=(Pot*tempR)/(1023-Pot);
+    tempT=-0.0027*resistance + 52;
+
+    if(tempT < Setpoint+0.5)
+        digitalWrite(heater, HIGH);
+
+    else if(tempT > Setpoint+0.5)
+        digitalWrite(heater, LOW);
+
+    else if(Setpoint-0.5 < tempT  && tempT < Setpoint+0.5)
+        digitalWrite(heater, LOW);
+}
 
 void read_speed()
-{}
+{
+    // lights up LED2- photointerrupter
+    digitalWrite(Vcc2,HIGH);
+    digitalWrite(Vcc1,HIGH);
+    digitalWrite(GND2,LOW);
+    digitalWrite(GND1,LOW);
+
+    //get the speed of rotation, read per 20ms, caculate per 20s,1000round
+    newCurrent = digitalRead(readCurrent);
+    if (newCurrent != lastCurrent){
+        if (newCurrent == 1){
+            recordRotation = recordRotation+1;
+        }
+    }
+    lastCurrent = newCurrent;
+    if (recordTime % 2000 == 0 ){
+        int RPM = recordRotation *30/2;
+        recordRotation=0;
+        if (RPM == 0){ //first time
+            analogWrite(controlMotor,motorSpeed);
+        }
+        else if (RPM >= upperRange && motorSpeed>0){ // too fast
+            motorSpeed = motorSpeed -1;
+        }
+        else if (RPM <= lowerRange && motorSpeed<255){
+            motorSpeed  = motorSpeed+1;
+        }
+    }
+    recordTime = recordTime+5;
+}
 
 void loop() {
-    if (Serial.available() > 0) {
-        update_variables();
-    }
-    else {
-        read_pH();
-        read_temperature();
-        read_speed();
-    }
+    while (RUNNING == 1) {
+        if (Serial.available() > 0) {
+            update_variables();
+        }
+        else {
+            read_pH();
+            read_temperature();
+            read_speed();
+        }
 
-    Serial.print("<pH,");
-    Serial.print(pH);
-    Serial.println(">");
-    delay(200);
-    Serial.print("<temperature,");
-    Serial.print(temperature);
-    Serial.println(">");
-    delay(200);
-    Serial.print("<speed,");
-    Serial.print(speed);
-    Serial.println(">");
-    delay(200);
+        Serial.print("<pH,");
+        Serial.print(pH);
+        Serial.println(">");
+        delay(200);
+        Serial.print("<temperature,");
+        Serial.print(tempT);
+        Serial.println(">");
+        delay(200);
+        Serial.print("<speed,");
+        Serial.print(RPM);
+        Serial.println(">");
+        delay(200);
+    }
 }
 
