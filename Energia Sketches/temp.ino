@@ -1,31 +1,31 @@
 int heater = 7;
-int Pot = 0;
-int R = 10000;
+int tempPot = 0;
+int tempR = 10000;
 int Setpoint = 30;
 
 void setup()
 {
-    pinMode(Pot, INPUT);
+    pinMode(tempPot, INPUT);
     pinMode(heater, OUTPUT);
     Serial.begin(9600);
 }
 
 void loop()
 {
-    int Pot = analogRead(A4) ;
-    float resistance=(Pot*R)/(1023-Pot);
-    float T=-0.0027*resistance+52;
+    int tempPot = analogRead(A4) ;
+    float tempResistance=(tempPot*tempR)/(1023-tempPot);
+    float tempT=-0.0027*tempResistance+52;
     Serial.print("<temperature,");
-    Serial.print(T);
+    Serial.print(tempT);
     Serial.println(">");
     
-    if(T < Setpoint+0.5)
+    if(tempT < Setpoint+0.5)
         digitalWrite(heater, HIGH);
     
-    else if(T > Setpoint+0.5)
+    else if(tempT > Setpoint+0.5)
         digitalWrite(heater, LOW);
     
-    else if(Setpoint-0.5 < T < Setpoint+0.5)
+    else if(Setpoint-0.5 < tempT < Setpoint+0.5)
         digitalWrite(heater, LOW);
     
     if (Serial.available() > 0 && Serial.read() == '<')
