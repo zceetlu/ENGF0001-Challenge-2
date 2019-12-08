@@ -20,13 +20,13 @@ void loop()
     Serial.println(">");
     
     if(tempT < Setpoint+0.5)
-        digitalWrite(heater, HIGH);
+        analogWrite(heater, 125);
     
     else if(tempT > Setpoint+0.5)
-        digitalWrite(heater, LOW);
+        analogWrite(heater, 0);
     
     else if(Setpoint-0.5 < tempT < Setpoint+0.5)
-        digitalWrite(heater, LOW);
+        analogWrite(heater, 0);
     
     if (Serial.available() > 0 && Serial.read() == '<')
     {
